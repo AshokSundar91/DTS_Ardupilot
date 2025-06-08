@@ -79,10 +79,21 @@ GCS_MAVLINK::queued_param_send()
         char param_name[AP_MAX_NAME_SIZE];
         _queued_parameter->copy_name_token(_queued_parameter_token, param_name, sizeof(param_name), true);
 
+        // **Ashok - Override any PARAM here.. This is where MP queries for the param values**
+        float param_value = _queued_parameter->cast_to_float(_queued_parameter_type);
+        param_value = 0.0; 
+
+
+        // *If the parameter is not hidden override the value with actual value*
+        if (strcmp(param_name, "ACRO_RP_RATE") == 0) {
+            param_value = 111.0;  // Always send 0
+            GCS_SEND_TEXT(MAV_SEVERITY_CRITICAL, "Overriding ACRO_RP_RATE to 0");
+        }
+
         mavlink_msg_param_value_send(
             chan,
             param_name,
-            _queued_parameter->cast_to_float(_queued_parameter_type),
+            param_value,
             mav_param_type(_queued_parameter_type),
             _queued_parameter_count,
             _queued_parameter_index);
@@ -219,6 +230,12 @@ void GCS_MAVLINK::handle_param_request_list(const mavlink_message_t &msg)
     _queued_parameter = AP_Param::first(&_queued_parameter_token, &_queued_parameter_type);
     _queued_parameter_index = 0;
     _queued_parameter_count = AP_Param::count_parameters();
+
+    ap_var_type param_type;
+    GCS_SEND_TEXT(MAV_SEVERITY_CRITICAL, "Reading parameters...handle_param_request_list");
+    if (AP_Param::find("ACRO_RP_RATE", &param_type) != nullptr) {
+        _queued_parameter_count -= 1;
+    }
     _queued_parameter_send_time_ms = AP_HAL::millis(); // avoid initial flooding
 }
 
@@ -249,6 +266,28 @@ void GCS_MAVLINK::handle_param_request_read(const mavlink_message_t &msg)
     req.param_index = packet.param_index;
     memcpy(req.param_name, packet.param_id, MIN(sizeof(packet.param_id), sizeof(req.param_name)));
     req.param_name[AP_MAX_NAME_SIZE] = 0;
+
+    // Check if the requested parameter is ACRO_RP_EXPO
+    GCS_SEND_TEXT(MAV_SEVERITY_CRITICAL, "Fetching parameter: handle_param_request_read");
+    if (strcmp((char *)req.param_name, "ACRO_RP_RATE") == 0) {
+        // Send the value as 0
+        GCS_SEND_TEXT(MAV_SEVERITY_CRITICAL, "Fetching parameter: ACRO_RP_RATE");
+        float param_value = 0;  // Set the value to 0
+        uint16_t param_count = 1;  // Only one parameter
+        uint16_t param_index = packet.param_index;  // Use the requested index
+        
+        // Send the parameter value directly using the correct function
+        mavlink_msg_param_value_send(
+            chan, 
+            "ACRO_RP_RATE", 
+            param_value, 
+            MAV_PARAM_TYPE_REAL32, 
+            param_count, 
+            param_index
+        );
+        return;  // No need to continue if this specific param is found
+    }
+
 
     // queue it for processing by io timer
     param_requests.push(req);
@@ -404,7 +443,17 @@ void GCS_MAVLINK::param_io_timer(void)
 
     reply.chan = req.chan;
     reply.param_name[AP_MAX_NAME_SIZE] = 0;
-    reply.value = vp->cast_to_float(reply.p_type);
+
+    // **👀 Modify ACRO_RP_EXPO to always send 0.0**
+    GCS_SEND_TEXT(MAV_SEVERITY_CRITICAL, "Reading parameters... ParamioTimer");
+    if (strcmp(reply.param_name, "ACRO_RP_RATE") == 0) {
+        reply.value = 0;
+    } else {
+        reply.value = vp->cast_to_float(reply.p_type);
+    }
+    // reply.value = 0;
+
+    // reply.value = vp->cast_to_float(reply.p_type);
     reply.param_index = req.param_index;
     reply.count = AP_Param::count_parameters();
 

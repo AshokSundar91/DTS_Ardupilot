@@ -101,7 +101,8 @@
 #endif
 
 #ifndef AP_MAVLINK_FTP_ENABLED
-#define AP_MAVLINK_FTP_ENABLED HAL_GCS_ENABLED
+// #define AP_MAVLINK_FTP_ENABLED HAL_GCS_ENABLED
+#define AP_MAVLINK_FTP_ENABLED 0
 #endif
 
 // GCS should be using MISSION_REQUEST_INT instead; this is a waste of

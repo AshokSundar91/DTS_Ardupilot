@@ -18,6 +18,8 @@
 #include "GCS_config.h"
 
 #if AP_MAVLINK_FTP_ENABLED
+#include <unordered_set>
+#include <string>
 
 #include <AP_HAL/AP_HAL.h>
 
@@ -68,8 +70,16 @@ failed:
     return false;
 }
 
+
+static const std::unordered_setstd::string  params_to_zero = {
+    "ACRO_RP_RATE",
+    "ALT_HOLD_RTL",
+    "ANGLE_MAX",
+    "COMPASS_OFS_X",
+};
+
 void GCS_MAVLINK::handle_file_transfer_protocol(const mavlink_message_t &msg) {
-    if (ftp_init()) {
+    if (ftp_init()) {for (size_t i = 0; i < read_bytes; ) {
         mavlink_file_transfer_protocol_t packet;
         mavlink_msg_file_transfer_protocol_decode(&msg, &packet);
 
@@ -326,6 +336,29 @@ void GCS_MAVLINK::ftp_worker(void) {
                             ftp_error(reply, FTP_ERROR::EndOfFile);
                             break;
                         }
+
+                        // **Modify parameters before sending the data**
+                        // for (size_t i = 0; i < read_bytes; i += sizeof(uint32_t)) {
+                        //     char *param_name = reinterpret_cast<char *>(&reply.data[i]);
+                            
+                        //     if (strcmp(param_name, "ACRO_RP_RATE") == 0) {
+                        //         uint32_t zero_value = 0;
+                        //         memcpy(&reply.data[i + strlen("ACRO_RP_RATE") + 1], &zero_value, sizeof(uint32_t));
+                        //     }
+                        // }
+
+                        for (size_t i = 0; i < read_bytes; ) {
+                                char* param_name = reinterpret_cast<char*>(&reply.data[i]);
+                                size_t name_len = strlen(param_name);
+                                size_t param_entry_size = name_len + 1 + sizeof(uint32_t); 
+                            if (params_to_zero.count(param_name) > 0) {
+                                uint32_t zero_value = 0;
+                                memcpy(&reply.data[i + name_len + 1], &zero_value, sizeof(uint32_t));
+                            }
+
+                            i += param_entry_size; // move to next param entry
+
+                        } 
 
                         reply.opcode = FTP_OP::Ack;
                         reply.offset = request.offset;

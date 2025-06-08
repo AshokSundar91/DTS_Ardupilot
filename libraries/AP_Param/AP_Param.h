@@ -163,7 +163,10 @@
 #define AP_GROUPEND     { "", 0,       { group_info : nullptr }, 0, 0xFF, AP_PARAM_NONE }
 
 // Vehicle defines for info struct
-#define GSCALAR(v, name, def)                { name, &AP_PARAM_VEHICLE_NAME.g.v,                   {def_value : def},                   0,                                                  Parameters::k_param_ ## v,          AP_PARAM_VEHICLE_NAME.g.v.vtype }
+// #define GSCALAR(v, name, def, flags) { name, &AP_PARAM_VEHICLE_NAME.g.v, {def_value : def}, flags, Parameters::k_param_ ## v, AP_PARAM_VEHICLE_NAME.g.v.vtype }
+#define GSCALAR(v, name, def) GSCALAR_WITH_FLAGS(v, name, def, 0)
+#define GSCALAR_WITH_FLAGS(v, name, def, flags) { name, &AP_PARAM_VEHICLE_NAME.g.v, {def_value : def}, flags, Parameters::k_param_ ## v, AP_PARAM_VEHICLE_NAME.g.v.vtype }
+
 #define GARRAY(v, index, name, def)          { name, &AP_PARAM_VEHICLE_NAME.g.v[index],            {def_value : def},                   0,                                                  Parameters::k_param_ ## v ## index, AP_PARAM_VEHICLE_NAME.g.v[index].vtype }
 #define ASCALAR(v, name, def)                { name, (const void *)&AP_PARAM_VEHICLE_NAME.aparm.v, {def_value : def},                   0,                                                  Parameters::k_param_ ## v,          AP_PARAM_VEHICLE_NAME.aparm.v.vtype }
 #define GGROUP(v, name, class)               { name, &AP_PARAM_VEHICLE_NAME.g.v,                   {group_info : class::var_info},      0,                                                  Parameters::k_param_ ## v,          AP_PARAM_GROUP }
